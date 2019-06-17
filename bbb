@@ -1,0 +1,239 @@
+#data analysis
+
+############################################################################################################################################################################
+#Activate necessary packages
+############################################################################################################################################################################
+
+library("ggplot2")
+library("plotrix")
+library("fields")                                           
+library("spatstat")
+library("pgirmess")
+library("RColorBrewer")
+
+############################################################################################################################################################################
+#File input and filtering
+############################################################################################################################################################################
+
+directory_input<-readline("where is the file? e.g.C:/Users/Elyra/table_folder:")
+directory<-gsub("\\", "/", directory_input, fixed=TRUE)                                                   #working on windows so I have to invert \ to /
+setwd(directory)                                                                                          #setting working directory
+dir()                                                                                                     #show directory content
+file1name<-readline("file1 name:")                                                                        #input the name of the PALM localization table file in the console after running this line
+readLines(file1name)                                                                                      
+
+#Elyra PALM tables contain an embedded NULL; the length of the table is equal to the embedded NULL position minues 2
+
+file<-read.delim(file1name, header=T, nrow=XXXXX)                                                         #nrow = embedded null line position is -2
+fileR<-file
+
+#example of filtering (depends on fluorophore used and imaging condition)
+fileR1<-fileR[fileR$Number.Photons>XXX & fileR$Number.Photons<XXX & fileR$PSF.half.width..nm.>XXX & fileR$PSF.half.width..nm.<XXX,]
+
+############################################################################################################################################################################
+#Invert Y because of how data are read by software + shift X and Y according to mask obtained from the Bright Field imaging
+############################################################################################################################################################################
+fileR2<-fileR1
+fileR2$Position.Y..nm.<-51200-fileR2$Position.Y..nm.     
+fileR2$Position.X..nm.<-fileR2$Position.X..nm.+XXX
+fileR2$Position.Y..nm.<-fileR2$Position.Y..nm.+XXX
+
+fx<-fileR2
+
+############################################################################################################################################################################
+#Change folder to where the R.Cell*.txt files are
+#Verify correct alignment between events and ROIs
+############################################################################################################################################################################
+
+directory_input<-readline("where is the file? e.g.C:/Users/Giacomo/Documents/phd/Elyra/November2015:")
+directory<-gsub("\\", "/", directory_input, fixed=TRUE)                                                   #working on windows so I have to invert \ to /
+setwd(directory)                                                                                          #setting working directory
+dir()                                                                                                     #show directory content
+
+
+fileNames <- Sys.glob("R.Cell*.txt")
+CELLS<-data.frame()
+LISTofAREAS<-c()
+fx[14]<-NA
+fx[15]<-NA
+fx[16]<-NA
+colnames(fx)[14]<-"CellName"
+colnames(fx)[15]<-"CellDiameter"
+colnames(fx)[16]<-"CellArea"
+
+#The plot(realsA) within the  cycle shows the position of the events within the used ROIs, shift them accordingly if necessary
+
+for (i in fileNames) {
+  c1<-read.table(i, header=TRUE)
+  cx1<-(10*c1$X)
+  cy1<-(10*c1$Y)
+  poli<-list(list(x=cx1, y=cy1))
+  cm1<-owin(poly=poli)
+  pp3<-as.ppp(fx[c(5:6)],cm1)
+  realsA<-subset(pp3,cm1)
+  plot(realsA)                                  
+  if (length(realsA$x)>0){
+    for (k in 1:length(realsA$x)) {
+      fx[fx$Position.X..nm.==realsA[k]$x & fx$Position.Y..nm.==realsA[k]$y,14]<-i
+      fx[fx$Position.X..nm.==realsA[k]$x & fx$Position.Y..nm.==realsA[k]$y,15]<-diameter(cm1)
+      fx[fx$Position.X..nm.==realsA[k]$x & fx$Position.Y..nm.==realsA[k]$y,16]<-area.owin(cm1)
+      CELLS<-rbind(CELLS,fx[fx$Position.X..nm.==realsA[k]$x & fx$Position.Y..nm.==realsA[k]$y,])
+    }
+  LISTofAREAS<-c(LISTofAREAS,poli)
+  }
+}
+
+write.table(fx, file="updatedtableX.txt",sep="\t",row.names = FALSE, quote=FALSE) 
+saveRDS(LISTofAREAS, file="AreaListX.RData")
+
+fileR2<-fx
+
+############################################################################################################################################################################
+#Exclude events lying outside the ROIs
+#Update table accordingly
+############################################################################################################################################################################
+
+pov<-owin(poly=LISTofAREAS)
+pp<-as.ppp(fileR2[c(5:6)],pov)
+reals<-subset(pp,pov)
+
+fileR3<-data.frame()
+for (i in 1:length(reals$x)) {
+  fileR3<-rbind(fileR3,fileR2[fileR2$Position.X..nm.==reals[i]$x & fileR2$Position.Y..nm.==reals[i]$y,])
+}
+
+############################################################################################################################################################################
+#Cluster Priming
+############################################################################################################################################################################
+
+
+file<-fileR3                                                                                                                                                     
+
+file$Index<-c(1:length(file$Index))                                                                       #change Index values to allow for analysis
+file0<-file                                                                                               #assign to new variable
+file1<-as.list(file0)                                                                                     #data.frame to list
+length<-c(1:length(file1$Index))                                                                          #length variable is a vector where each value is an Index value (same length as file itself)
+file1[17]<-list(length)                                                                                   #create list of lists (where number of lists is equal to number events and each member of list is a list of same length of file)
+file1[18]<-list(length)
+names(file1)[17]<-"Prox"                                                                                  #naming the new list that will contain the cluster primers
+names(file1)[18]<-"Cluster"
+
+b<-c()
+for (i in 1:(length(file1$Index))) {                                                                      #run through list
+  a<-c()                                                                                                  #initialize empty vector
+  xcord<-file1$Position.X..nm[i]                                                                          #coordinates of each event are assigned
+  ycord<-file1$Position.Y..nm[i]
+  #create a subset of dataframe composed of events in close proximity to analysed point
+  fileT<-file0[file0$Position.X..nm.<(xcord+100) & file0$Position.X..nm.>(xcord-100) & file0$Position.Y..nm.<(ycord+100) & file0$Position.Y..nm.>(ycord-100),]
+  b<-c(b,length(file0[file0$Position.X..nm.<(xcord+25) & file0$Position.X..nm.>(xcord-25) & file0$Position.Y..nm.<(ycord+25) & file0$Position.Y..nm.>(ycord-25),1]))
+  for (k in (fileT$Index)) {                                                                              #run subset and check for distance from analysed point: is the Distance smaller than the sum of the Precisions divided by two?
+    if (dist(rbind(c(file1$Position.X..nm.[i],file1$Position.Y..nm.[i]),c(file1$Position.X..nm.[k],file1$Position.Y..nm.[k])))<sum((file1$Precision..nm.[i]+file1$Precision..nm.[k])/2)) {  #if distance between points is < sum of radius
+      a<-c(a, k)                                                                                          #add event to vector if answer is positive
+    }
+  }
+  if (length(a)>1) {                                                                                      #if the event is in proximity of other events,
+    file1[[17]][i]<-list(a)                                                                               ##list to position
+  }
+}
+
+file1[18]<-file1[17]
+file1[19]<-list(b)
+names(file1)[19]<-"LocalDensity"
+
+############################################################################################################################################################################
+#Cluster Propagation
+############################################################################################################################################################################
+
+for (i in 1:length(file1$Prox)) {                                                                         #run through the list
+  repeat {
+    a<-1                                                                                                  #initialize variable "a"
+    b<-1                                                                                                  #initialize variable "b"
+    if (length(file1[[18]][[i]])>1) {                                                                     #if the cluster primer associated with the event is longer than 1 (if the previous part of the script found other events in proximity)
+      a<-c(file1[[18]][[i]])                                                                              #variable "a" becomes the cluster primer list
+      a<-sort(a)                                                                                          #sort "a"
+      b<-c(file1[[18]][[i]])                                                                              #variable "b" becomes the cluster primer list
+      for (k in a) {                                                                                      #run thorugh the events contained in the primer cluster
+        if (length(file1[[18]][[k]])>1) {                                                                 #if those events have primer clusters (if they have other events in their proximity)
+          b<-c(b,file1[[18]][[k]])                                                                        #add to the variable "b" all the new events
+          file1[[18]][k]<-0                                                                               #once the primer clusters are added, they become 0 (avoid redundancy)
+        }
+      }
+      b<-unique(b)                                                                                        #eliminate redundancy in the cluster list
+      b<-sort(b)                                                                                          #sort the cluster list
+      file1[[18]][i]<-list(b)                                                                             #update the list of events in proximity of the analysed event
+    }
+    if (all((length(a)==length(b)) && all(a==b)))                                                         #if, after repeating the cycle, the list is not increasing in size and all the values are the same, interrupt the cycle
+    {break}
+  }
+}
+
+file0[17]<-NA                                                                                             #create new column in data.frame
+file0[18]<-NA                                                                                             #create new column in data.frame
+file0[19]<-file1[19]                                                                                      #create new column in data.frame
+colnames(file0)[17]<-"ClustName"                                                                          #naming column 15 Cluster name
+colnames(file0)[18]<-"ClustSize"                                                                          #naming column 16 Cluster size
+colnames(file0)[19]<-"LocalDensity"                                                                       #density
+for (i in 1:length(file1$Prox)) {                                                                         #run through list
+  name<-paste("Cluster",i,sep=".")                                                                        #dinamically change name according to cluster number
+  for (m in 1:length(file1[[18]][[i]])) {                                                                 
+    file0[file1[[18]][[i]][m],17]<-name                                                                   #add cluster name to column 15
+    file0[file1[[18]][[i]][m],18]<-length(file1[[18]][[i]])                                               #add cluster size to column 16 
+  }
+} 
+
+############################################################################################################################################################################
+#Define name of the Channel and of the Field of view
+############################################################################################################################################################################
+
+file0$Channel<-"ChannelName"
+file0[20]<-"FieldName"              
+colnames(file0)[20]<-"Field"       
+
+############################################################################################################################################################################
+#Calculate clusters parameters
+############################################################################################################################################################################
+
+file0[21]<-0                                                                                              #initialize new column in data frame (numeric)
+colnames(file0)[21]<-"ClustMaxDist"                                                                       #this column will contain the maximum distance within a cluster
+for (i in file0$ClustName){                                                                               #cycle through clusters
+  if (length(file0[file0$ClustName==i,1])>1) {                                                            #if cluster is bigger than 1
+    cluster0<-file0[file0$ClustName==i,]                                                                  #this dataframe is the subset of events composed exclusively of events belonging to the analysed cluster
+    pam<-as.matrix(cluster0[,c(5,6)])                                                                     #create a matrix with the x,y localizations
+    file0[file0$ClustName==i,21]<-max(rdist(pam))                                                         #search for maximum distance and add it to column 18
+  }
+}
+
+a<-data.frame(file0$ClustName[c(1)],stringsAsFactors=FALSE)                                                                    #create a data frame of one row and one column containing a vector with the first cluster (it will always be unique)
+colnames(a)[1]<-"ClustName"                                                                               #Name of column is ClustName...same as table
+file0[22]<-NA
+colnames(file0)[22]<-"Unique"                                                                             #rename file column (14) to Unqique, it will contain a "yes" "no" value according to whether the molecule was the first one found within the cluster
+file0[1,22]<-"yes"                                                                                        #first molecule is always unique (also, it is needed for initialization)
+
+
+for (i in 2:length(file0$Index)){if (file0$ClustName[[i]]%in%a$ClustName == TRUE) {file0[i,22]<-"no"} else { #run through the file index, if the ClustName of the molecule is part of the vector a, the cluster is not unique, aka: a molecule from that cluster has already been analysed
+  a<-rbind(a,as.vector(file0$ClustName[i]))                                                                #else, add the name of the cluster to vector a
+  file0[i,22]<-"yes"                                                                                       #and write yes at the specified molecule
+}}
+
+file0[23]<-NA
+file0[24]<-NA
+file0[25]<-NA
+colnames(file0)[23]<-"AvgDens"
+colnames(file0)[24]<-"MaxDens"
+colnames(file0)[25]<-"MinDens"
+for (i in file0$ClustName) {
+  file0[file0$ClustName==i,23]<-mean(file0[file0$ClustName==i,19])
+  file0[file0$ClustName==i,24]<-max(file0[file0$ClustName==i,19])
+  file0[file0$ClustName==i,25]<-min(file0[file0$ClustName==i,19])
+}
+
+file0[26]<-nndist(X=file0$Position.X..nm., Y=file0$Position.Y..nm. , method="C")
+colnames(file0)[26]<-"ClosestNeigh"
+file0[27]<-nnwhich(X=file0$Position.X..nm., Y=file0$Position.Y..nm. , method="C")
+colnames(file0)[27]<-"ClosestNeighIndex"
+
+############################################################################################################################################################################
+#Save output table
+############################################################################################################################################################################
+
+write.table(file0, file="OutputTable1.txt",sep="\t",row.names = FALSE, quote=FALSE)                   
