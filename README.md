@@ -19,21 +19,24 @@ Elyra_Table_example:
 
 Script_R1_ROI_mod (ROI modification script):
 - Input: ROIs obtained via Fiji -> need to be named Cell*.txt
-- Output: ROIs ready to be used for "PALM data analysis" script -> R.Cell*.txt
+- Output: ROIs ready to be used for "Script_R2_PALM filtering" script -> R.Cell*.txt
 
-Script_R2_PALM analysis (PALM data analysis):
+Script_R2_PALM filtering (PALM data analysis):
 - Input: ROIs obtained from "Script_R1_ROI_mod"
 - Input: Elyra_Table_Example
 - Output: Channel_#_updatedtableX (Elyra table drifted according to the ROIs - Channel specific)
 - Output: AreaListX.RData (ROIs - both channels give the same output)
 - Output: Channel_#_flagella_drifted_filtered.txt (PALM_filtered_output example)
 
-PALM_analysis_output example: (first 13 columns are the same as the "Elyra_Table_example")
+PALM_filtering_output example: (first 13 columns are the same as the "Elyra_Table_example")
 - CellName: ROI file name (R.Cell*.txt)
 - CellDiameter: Diameter of the ROI in nm
 - CellArea: Area of the ROI in square nm
 
-Script_R3_Gest (Gest): Estimates the nearest neighbour distance distribution function G(r) from a point pattern in a window of arbitrary shape.
-- Input: AreaListX.RData (ROIs) or ROIs obtained from "Script_R1_ROI_mod"
-- Input: OutputTableX.txt (PALM_analysis_output example)
-- Output: Gest plot, Gest(experimental-theoretical) plot
+Script_R3_CBC_calculation_and_plot: Calculate the coordinate-based colocalization values of single-molecule localization data (CBC)
+
+- Input: AreaListX.RData (ROIs)
+- Input: "Channel_#_flagella_drifted_filtered.txt" (PALM_filtering_output example)(one input for channel)
+- Output: pamCBC.txt (table including the Calculation of the rank correlation coefficient (Spearman) "S" and of the colocalization value for the PAmCherry molecules respective to mNeonGreen "Ca" )
+- Output: neoCBC.txt (table including the Calculation of the rank correlation coefficient (Spearman) "S" and of the colocalization value for the mNeonGreen molecules respective to PAmCherry "Ca" )
+- Output: PLOTS
