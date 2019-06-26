@@ -26,7 +26,7 @@ Script_R2_PALM analysis (PALM data analysis):
 - Input: Elyra_Table_Example
 - Output: Channel_#_updatedtableX (Elyra table drifted according to the ROIs - Channel specific)
 - Output: AreaListX.RData (ROIs - both channels give the same output)
-- Output: Channel_#_flagella_drifted_filtered.txt (PALM_analysis_output example)
+- Output: Channel_#_flagella_drifted_filtered.txt (PALM_filtered_output example)
 
 PALM_analysis_output example: (first 13 columns are the same as the "Elyra_Table_example")
 - CellName: ROI file name (R.Cell*.txt)
