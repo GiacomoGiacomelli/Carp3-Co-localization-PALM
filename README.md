@@ -21,7 +21,7 @@ Script_R1_ROI_mod (ROI modification script):
 - Input: ROIs obtained via Fiji -> need to be named Cell*.txt
 - Output: ROIs ready to be used for "Script_R2_PALM filtering" script -> R.Cell*.txt
 
-Script_R2_PALM filtering (PALM data analysis):
+Script_R2_PALM filtering (PALM data filtering):
 - Input: ROIs obtained from "Script_R1_ROI_mod"
 - Input: Elyra_Table_Example
 - Output: Channel_#_updatedtableX (Elyra table drifted according to the ROIs - Channel specific)
