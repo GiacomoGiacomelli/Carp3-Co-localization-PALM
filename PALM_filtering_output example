@@ -16,3 +16,19 @@ Index	First.Frame	Number.Frames	Frames.Missing	Position.X..nm.	Position.Y..nm.	P
 15	413	1	0	29254.1	12724.8	22	99	14.22	0.41	81.8	1	1	R.Cell0.txt	5889.830218	3911000
 16	414	1	0	29271.9	12729.4	19.4	112	7.83	0.38	90.8	1	1	R.Cell0.txt	5889.830218	3911000
 17	416	1	0	29331.8	12744.3	27	115	19.11	0.39	93.8	1	1	R.Cell0.txt	5889.830218	3911000
+												
+												
+VoxelSizeX : 0.1000000000 µm												
+												
+VoxelSizeY : 0.1000000000 µm												
+												
+ResolutionX : 1.0000000000												
+												
+ResolutionY : 1.0000000000												
+												
+SizeX : 512												
+												
+SizeY : 512												
+												
+												
+ROI List : 
